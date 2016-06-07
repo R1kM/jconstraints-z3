@@ -264,7 +264,9 @@ public class NativeZ3ExpressionGenerator extends AbstractExpressionVisitor<Expr,
 
   public Expr visit(StoreExpression se, Void data) {
       try {
-        return ctx.mkStore((ArrayExpr) visit(se.arrayExpression, data), (IntExpr) visit(se.indexExpression, data), visit(se.value, data));
+        IntExpr ie = (IntExpr)ensureArith(visit(se.indexExpression, data), se.indexExpression.getType());
+        IntExpr value = (IntExpr)ensureArith(visit(se.value, data), se.value.getType());
+        return ctx.mkEq(ctx.mkStore((ArrayExpr) visit(se.arrayExpression, data), ie, value), (ArrayExpr) visit(se.newArrayExpression, data));
       } catch (Z3Exception ex) {
           throw new RuntimeException(ex);
       }
