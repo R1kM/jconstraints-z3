@@ -18,6 +18,7 @@ package gov.nasa.jpf.constraints.solvers.nativez3;
 import gov.nasa.jpf.constraints.api.Expression;
 import gov.nasa.jpf.constraints.api.Variable;
 import gov.nasa.jpf.constraints.expressions.AbstractExpressionVisitor;
+import gov.nasa.jpf.constraints.expressions.ArrayExpression;
 import gov.nasa.jpf.constraints.expressions.BitvectorExpression;
 import gov.nasa.jpf.constraints.expressions.BitvectorNegation;
 import gov.nasa.jpf.constraints.expressions.CastExpression;
@@ -29,6 +30,8 @@ import gov.nasa.jpf.constraints.expressions.NumericCompound;
 import gov.nasa.jpf.constraints.expressions.NumericOperator;
 import gov.nasa.jpf.constraints.expressions.PropositionalCompound;
 import gov.nasa.jpf.constraints.expressions.QuantifierExpression;
+import gov.nasa.jpf.constraints.expressions.SelectExpression;
+import gov.nasa.jpf.constraints.expressions.StoreExpression;
 import gov.nasa.jpf.constraints.expressions.UnaryMinus;
 import gov.nasa.jpf.constraints.types.BVIntegerType;
 import gov.nasa.jpf.constraints.types.BuiltinTypes;
@@ -49,6 +52,7 @@ import java.util.Set;
 import java.util.logging.Logger;
 
 import com.microsoft.z3.ArithExpr;
+import com.microsoft.z3.ArrayExpr;
 import com.microsoft.z3.BitVecExpr;
 import com.microsoft.z3.BitVecSort;
 import com.microsoft.z3.BoolExpr;
@@ -250,6 +254,22 @@ public class NativeZ3ExpressionGenerator extends AbstractExpressionVisitor<Expr,
     }    
   }
   
+  public Expr visit(SelectExpression se, Void data) {
+    try {
+        return ctx.mkSelect((ArrayExpr)visit(se.arrayExpression, data), (IntExpr)visit(se.indexExpression, data));
+    } catch (Z3Exception ex) {
+        throw new RuntimeException(ex);
+    }
+  }
+
+  public Expr visit(StoreExpression se, Void data) {
+      try {
+        return ctx.mkStore((ArrayExpr) visit(se.arrayExpression, data), (IntExpr) visit(se.indexExpression, data), visit(se.value, data));
+      } catch (Z3Exception ex) {
+          throw new RuntimeException(ex);
+      }
+  }
+
   /* (non-Javadoc)
    * @see gov.nasa.jpf.constraints.expressions.AbstractExpressionVisitor#visit(gov.nasa.jpf.constraints.expressions.NumericBooleanExpression, java.lang.Object)
    */
@@ -815,6 +835,10 @@ public class NativeZ3ExpressionGenerator extends AbstractExpressionVisitor<Expr,
   protected Expr getOrCreateVar(Variable<?> v) {
     Type<?> type = v.getType();
     
+    if (v instanceof ArrayExpression) {
+        return getOrCreateArrayVar((ArrayExpression<?>)v);
+    }
+
     if(type.equals(BuiltinTypes.BOOL)) {
       return getOrCreateBoolVar(v);
     }
@@ -830,8 +854,39 @@ public class NativeZ3ExpressionGenerator extends AbstractExpressionVisitor<Expr,
     throw new IllegalArgumentException("Cannot handle variable type " + type);
   }
   
+  protected Expr getOrCreateArrayVar(ArrayExpression<?> v) {
+    Expr ret = this.variables.get(v);
+    if (ret != null) {
+        return (ArrayExpr) ret;
+    }
 
-	protected Expr getOrCreateBoolVar(Variable<?> v)  {
+    Expr var = createArrayVar(v);
+    this.variables.put(v, var);
+    this.protect.add(var);
+    this.own.add(var);
+
+    return var;
+  }
+
+  protected Expr createArrayVar(ArrayExpression<?> v) {
+    Type<?> type = v.getType();
+    try {
+        if (type.equals(BuiltinTypes.BOOL)) {
+            return ctx.mkArrayConst(v.getName(), ctx.getIntSort(), ctx.getBoolSort());
+        }
+        if (type instanceof IntegerType) {
+            return ctx.mkArrayConst(v.getName(), ctx.getIntSort(), ctx.getIntSort());
+        }
+        if (type instanceof RealType) {
+            return ctx.mkArrayConst(v.getName(), ctx.getIntSort(), ctx.getRealSort());
+        }
+        throw new IllegalArgumentException("Cannot handle array variable type " + type);
+    } catch (Z3Exception ex) {
+        throw new RuntimeException(ex);
+    }
+  }
+
+  protected Expr getOrCreateBoolVar(Variable<?> v)  {
 		Expr ret = this.variables.get(v);
 		if (ret != null) {
 			return (BoolExpr) ret;
