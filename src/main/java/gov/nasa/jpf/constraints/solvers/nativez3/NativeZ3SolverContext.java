@@ -108,83 +108,83 @@ public class NativeZ3SolverContext extends SolverContext {
 			}
 			
 			Model model = solver.getModel();
-			try {
-			    if(logger.isLoggable(Level.FINE)) {
-				    String modelText = model.toString().replace("\n", ", ").trim();
-				    logger.fine(modelText);
-			    }
-			    
-			    NativeZ3ExpressionGenerator gen = generatorStack.peek();
-			    if(gen.isTainted(model)) {
-			      model.dispose();
-			      logger.info("Model is tainted, rechecking ...");
-			      model = gen.recheckUntainted();
-			      if(model == null)
-			        return Result.DONT_KNOW;
-			    }
-			    
-			    Map<String,Variable<?>> freeVars = new HashMap<String,Variable<?>>(freeVarsStack.peek());
-			    
-		        
-			    // FIXME mi: using origVars here fixes the issue that variables occuring only in the
-			    //           scope of quantifiers are part of the valuation. Might it break something
-			    //           else?
-			    long max = model.getNumConsts();
-			    FuncDecl[] decls = model.getConstDecls();
-			    try {
-			    	for (int i = 0; i < max; i++) { 
-			    		FuncDecl decl = decls[i];
-			    		
-			    		Symbol sym = null;
-			    		String text = null;
-			    		try {
-			    			sym = decl.getName();
-			    			text = sym.toString().trim();
-			    		}
-			    		finally {
-			    			sym.dispose();
-			    		}
-			    		
-					    Variable<?> v = freeVars.get(text);
-					    
-					    if (v == null) {
-					    	continue;
-					    }
-					    freeVars.remove(text);
+			//try {
+			//    if(logger.isLoggable(Level.FINE)) {
+			//	    String modelText = model.toString().replace("\n", ", ").trim();
+			//	    logger.fine(modelText);
+			//    }
+			//    
+			//    NativeZ3ExpressionGenerator gen = generatorStack.peek();
+			//    if(gen.isTainted(model)) {
+			//      model.dispose();
+			//      logger.info("Model is tainted, rechecking ...");
+			//      model = gen.recheckUntainted();
+			//      if(model == null)
+			//        return Result.DONT_KNOW;
+			//    }
+			//    
+			//    Map<String,Variable<?>> freeVars = new HashMap<String,Variable<?>>(freeVarsStack.peek());
+			//    
+		    //    
+			//    // FIXME mi: using origVars here fixes the issue that variables occuring only in the
+			//    //           scope of quantifiers are part of the valuation. Might it break something
+			//    //           else?
+			//    long max = model.getNumConsts();
+			//    FuncDecl[] decls = model.getConstDecls();
+			//    try {
+			//    	for (int i = 0; i < max; i++) { 
+			//    		FuncDecl decl = decls[i];
+			//    		
+			//    		Symbol sym = null;
+			//    		String text = null;
+			//    		try {
+			//    			sym = decl.getName();
+			//    			text = sym.toString().trim();
+			//    		}
+			//    		finally {
+			//    			sym.dispose();
+			//    		}
+			//    		
+			//		    Variable<?> v = freeVars.get(text);
+			//		    
+			//		    if (v == null) {
+			//		    	continue;
+			//		    }
+			//		    freeVars.remove(text);
 
-			
-					    AST res = model.getConstInterp(decl);
-					    try {				        
-					    	String value = res.toString().trim();
-					    	if(TypeUtil.isRealSort(v) && value.contains("/")) {
-					    	  String[] split = value.split("/");
-					    	  BigDecimal nom = new BigDecimal(split[0].trim());
-					    	  BigDecimal den = new BigDecimal(split[1].trim());
-					    	  BigDecimal quot = nom.divide(den, 10, RoundingMode.FLOOR);
-					    	  
-                  val.setParsedValue(v, quot.toPlainString());
-					    	}
-					    	else
-					    	  val.setParsedValue(v, value);
-						}
-					    finally {
-						    res.dispose();
-						}
-				    }
-			    }
-			    finally {
-			    	for(int i = 0; i < decls.length; i++)
-			    		decls[i].dispose();
-			    }
-			    
-		    
-			    for (Variable<?> r : freeVars.values())
-				    val.setDefaultValue(r);
-			    
-			}
-			finally {
-				model.dispose();
-			}
+			//
+			//		    AST res = model.getConstInterp(decl);
+			//		    try {				        
+			//		    	String value = res.toString().trim();
+			//		    	if(TypeUtil.isRealSort(v) && value.contains("/")) {
+			//		    	  String[] split = value.split("/");
+			//		    	  BigDecimal nom = new BigDecimal(split[0].trim());
+			//		    	  BigDecimal den = new BigDecimal(split[1].trim());
+			//		    	  BigDecimal quot = nom.divide(den, 10, RoundingMode.FLOOR);
+			//		    	  
+            //      val.setParsedValue(v, quot.toPlainString());
+			//		    	}
+			//		    	else
+			//		    	  val.setParsedValue(v, value);
+			//			}
+			//		    finally {
+			//			    res.dispose();
+			//			}
+			//	    }
+			//    }
+			//    finally {
+			//    	for(int i = 0; i < decls.length; i++)
+			//    		decls[i].dispose();
+			//    }
+			//    
+		    //
+			//    for (Variable<?> r : freeVars.values())
+			//	    val.setDefaultValue(r);
+			//    
+			//}
+			//finally {
+			//	model.dispose();
+			//}
 			
 			logger.finer("Satisfiable, valuation " + val);
 			return Result.SAT;
