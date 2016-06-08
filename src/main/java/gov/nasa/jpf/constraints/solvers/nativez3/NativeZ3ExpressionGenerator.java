@@ -256,7 +256,10 @@ public class NativeZ3ExpressionGenerator extends AbstractExpressionVisitor<Expr,
   
   public Expr visit(SelectExpression se, Void data) {
     try {
-        return ctx.mkSelect((ArrayExpr)visit(se.arrayExpression, data), (IntExpr)visit(se.indexExpression, data));
+        // TODO Not always IntExpr, can be RealExpr as well
+        IntExpr ie = (IntExpr)ensureArith(visit(se.indexExpression, data), se.indexExpression.getType());
+        IntExpr value = (IntExpr)ensureArith(visit(se.value, data), se.value.getType());
+        return ctx.mkEq(ctx.mkSelect((ArrayExpr)visit(se.arrayExpression, data), ie), value);
     } catch (Z3Exception ex) {
         throw new RuntimeException(ex);
     }
@@ -264,6 +267,7 @@ public class NativeZ3ExpressionGenerator extends AbstractExpressionVisitor<Expr,
 
   public Expr visit(StoreExpression se, Void data) {
       try {
+        // TODO Not always IntExpr, can be RealExpr as well
         IntExpr ie = (IntExpr)ensureArith(visit(se.indexExpression, data), se.indexExpression.getType());
         IntExpr value = (IntExpr)ensureArith(visit(se.value, data), se.value.getType());
         return ctx.mkEq(ctx.mkStore((ArrayExpr) visit(se.arrayExpression, data), ie, value), (ArrayExpr) visit(se.newArrayExpression, data));
